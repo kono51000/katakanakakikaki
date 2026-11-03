@@ -1,5 +1,25 @@
 'use strict';
 const HIRA='あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん';
+const ROWS=[
+ {id:'a',kana:'ア',en:'A',letters:'あいうえお'},
+ {id:'ka',kana:'カ',en:'KA',letters:'かきくけこ'},
+ {id:'sa',kana:'サ',en:'SA',letters:'さしすせそ'},
+ {id:'ta',kana:'タ',en:'TA',letters:'たちつてと'},
+ {id:'na',kana:'ナ',en:'NA',letters:'なにぬねの'},
+ {id:'ha',kana:'ハ',en:'HA',letters:'はひふへほ'},
+ {id:'ma',kana:'マ',en:'MA',letters:'まみむめも'},
+ {id:'ya',kana:'ヤ',en:'YA',letters:'やゆよ'},
+ {id:'ra',kana:'ラ',en:'RA',letters:'らりるれろ'},
+ {id:'wa',kana:'ワ・ヲ・ン',en:'WA / WO / N',letters:'わをん'}
+];
+function rowFor(m){return ROWS.find(r=>'row-'+r.id===m)}
+function rowName(r){if(r.id==='wa')return lang==='ja'?'ワ・ヲ・ン':lang==='th'?'กลุ่ม ワ・ヲ・ン':'WA / WO / N';return lang==='ja'?r.kana+'行':lang==='th'?'แถว '+r.kana:r.en+' row'}
+function modeTitle(m){const r=rowFor(m);return r?t('rowTitle',{row:rowName(r)}):t(m==='random'?'randomTitle':'orderedTitle')}
+function divisionTitle(m){const r=rowFor(m);return r?t('rowDivision',{row:rowName(r)}):t(m==='random'?'randomDivision':'orderedDivision')}
+function questionCount(m){return rowFor(m)?20:m==='random'?10:46}
+function modeCode(m){const r=rowFor(m);return r?'ROW '+r.en+' · 20 / 20':m==='random'?'RANDOM · 10 / 10':'A → N · 46 / 46'}
+function rowQueue(r){const result=[];while(result.length<20){const batch=shuffle([...r.letters]);if(batch[0]===result.at(-1)){[batch[0],batch[1]]=[batch[1],batch[0]]}result.push(...batch.slice(0,20-result.length))}return result}
+function renderRows(){const host=$('row-modes');host.replaceChildren(...ROWS.map(r=>{const b=document.createElement('button');b.type='button';b.className='row-mode';b.dataset.row=r.id;const title=document.createElement('strong');title.textContent=rowName(r);const small=document.createElement('small');small.textContent=[...r.letters].map(kata).join('・');b.append(title,small);b.onclick=()=>start('row-'+r.id);return b}))}
 const $=id=>document.getElementById(id),canvas=$('drawing'),ctx=canvas.getContext('2d');
 let completion=null,playerName='',feedbackState='initial';
 let queue=[],index=0,mode='random',strokes=[],active=null,locked=false,hints=0,usedHint=false,cleared=new Set();
@@ -7,8 +27,8 @@ try{const saved=JSON.parse(localStorage.getItem('katakana-pocket-cleared')||'[]'
 const kata=c=>String.fromCharCode(c.charCodeAt(0)+0x60);
 function show(id){['menu','game','result','certificate-view'].forEach(s=>$(s).hidden=s!==id);$('total').innerHTML=cleared.size+' <small>/ 46</small>'}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-function start(m){const name=$('student-name').value.trim();if(!name){$('student-name').setCustomValidity(t('nameRequired'));$('student-name').reportValidity();$('student-name').focus();return;}$('student-name').setCustomValidity('');if(typeof resetSavedImage==='function')resetSavedImage();playerName=name;$('student-name').readOnly=true;$('player-name').textContent=playerName;completion=null;mode=m;queue=m==='random'?shuffle([...HIRA]).slice(0,10):[...HIRA];index=0;hints=0;show('game');load()}
-function load(){strokes=[];active=null;locked=false;usedHint=false;ctx.clearRect(0,0,600,600);$('question').textContent=queue[index];$('hint-letter').textContent=kata(queue[index]);$('hint-letter').hidden=true;$('hint').setAttribute('aria-pressed','false');$('hint').disabled=false;$('clear').disabled=false;$('check').hidden=false;$('check').disabled=true;$('next').hidden=true;$('counter').textContent=`${index+1} / ${queue.length}`;$('mode-name').textContent=t(mode==='random'?'randomTitle':'orderedTitle');$('progress-fill').style.width=(index/queue.length*100)+'%';setFeedback('initial')}
+function start(m){const name=$('student-name').value.trim();if(!name){$('student-name').setCustomValidity(t('nameRequired'));$('student-name').reportValidity();$('student-name').focus();return;}$('student-name').setCustomValidity('');if(typeof resetSavedImage==='function')resetSavedImage();playerName=name;$('student-name').readOnly=true;$('player-name').textContent=playerName;completion=null;mode=m;queue=rowFor(m)?rowQueue(rowFor(m)):m==='random'?shuffle([...HIRA]).slice(0,10):[...HIRA];index=0;hints=0;show('game');load()}
+function load(){strokes=[];active=null;locked=false;usedHint=false;ctx.clearRect(0,0,600,600);$('question').textContent=queue[index];$('hint-letter').textContent=kata(queue[index]);$('hint-letter').hidden=true;$('hint').setAttribute('aria-pressed','false');$('hint').disabled=false;$('clear').disabled=false;$('check').hidden=false;$('check').disabled=true;$('next').hidden=true;$('counter').textContent=`${index+1} / ${queue.length}`;$('mode-name').textContent=modeTitle(mode);$('progress-fill').style.width=(index/queue.length*100)+'%';setFeedback('initial')}
 function point(e){const r=canvas.getBoundingClientRect();return[(e.clientX-r.left)*600/r.width,(e.clientY-r.top)*600/r.height]}
 function redraw(){ctx.clearRect(0,0,600,600);ctx.strokeStyle='#276552';ctx.lineWidth=13;ctx.lineCap='round';ctx.lineJoin='round';for(const s of strokes){ctx.beginPath();s.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));if(s.length===1){ctx.lineTo(s[0][0]+.1,s[0][1]+.1)}ctx.stroke()}}
 canvas.addEventListener('pointerdown',e=>{if(locked||active)return;e.preventDefault();canvas.setPointerCapture(e.pointerId);active={id:e.pointerId,points:[point(e)]};strokes.push(active.points);redraw()});
@@ -25,11 +45,12 @@ $('check').onclick=()=>{if(locked||active||strokes.flat().length<3)return;const 
 $('next').onclick=()=>{if(!locked||active||index>=queue.length)return;index++;if(index<queue.length)load();else{completion=Object.freeze({name:playerName,mode,letters:[...queue],hints,date:new Date()});show('result');renderResult()}};
 function setFeedback(key){feedbackState=key;$('feedback').dataset.state=key;const c=queue[Math.min(index,queue.length-1)];$('feedback').textContent=t(key)+(key==='success'&&c?` ${c} → ${kata(c)}`:'')}
 function renderResult(){if(!completion)return;$('result-text').textContent=t('resultSummary',{count:completion.letters.length,hints:completion.hints});$('result-letters').replaceChildren(...completion.letters.map(c=>{const s=document.createElement('span');s.textContent=c+' → '+kata(c);return s}));}
-function renderCertificate(){if(!completion)return;const random=completion.mode==='random';$('certificate').dataset.division=completion.mode;$('cert-division').textContent=t(random?'randomDivision':'orderedDivision');$('cert-name').textContent=completion.name;$('cert-count').textContent=`${completion.letters.length} / ${random?10:46}`;$('cert-hints').textContent=completion.hints;$('cert-date').textContent=new Intl.DateTimeFormat(({ja:'ja-JP',en:'en-GB',th:'th-TH'})[lang],{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'}).format(completion.date);$('cert-code').textContent=random?'RANDOM · 10 / 10':'A → N · 46 / 46';}
+function renderCertificate(){if(!completion)return;const random=completion.mode==='random';$('certificate').dataset.division=completion.mode;$('cert-division').textContent=divisionTitle(completion.mode);$('cert-name').textContent=completion.name;$('cert-count').textContent=`${completion.letters.length} / ${questionCount(completion.mode)}`;$('cert-hints').textContent=completion.hints;$('cert-date').textContent=new Intl.DateTimeFormat(({ja:'ja-JP',en:'en-GB',th:'th-TH'})[lang],{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'}).format(completion.date);$('cert-code').textContent=modeCode(completion.mode);}
 $('name-form').onsubmit=e=>{e.preventDefault();start('random')};
 $('issue-certificate').onclick=()=>{if(!completion?.name)return;renderCertificate();show('certificate-view');window.scrollTo({top:0,behavior:'instant'})};
 $('student-name').oninput=()=>$('student-name').setCustomValidity('');
 $('cert-home').onclick=()=>home();
 $('language').onchange=()=>{lang=$('language').value;try{localStorage.setItem('katakana-pocket-language',lang)}catch{}applyLanguage();};
-function applyLanguage(){document.documentElement.lang=lang;$('language').value=lang;document.title=t('appName');for(const [selector,key] of Object.entries(TEXT_TARGETS)){const el=document.querySelector(selector);if(el)el.textContent=t(key)}document.querySelectorAll('[data-t]').forEach(el=>el.textContent=t(el.dataset.t));$('drawing').setAttribute('aria-label',t('drawingLabel'));$('home').setAttribute('aria-label',t('home'));$('certificate').setAttribute('aria-label',t('certTitle'));$('student-name').placeholder=t('namePlaceholder');$('student-name').setCustomValidity('');$('mode-name').textContent=t(mode==='random'?'randomTitle':'orderedTitle');$('next').textContent=t(index===queue.length-1?'results':'next');setFeedback(feedbackState);renderResult();renderCertificate();}
+function applyLanguage(){document.documentElement.lang=lang;renderRows();$('language').value=lang;document.title=t('appName');for(const [selector,key] of Object.entries(TEXT_TARGETS)){const el=document.querySelector(selector);if(el)el.textContent=t(key)}document.querySelectorAll('[data-t]').forEach(el=>el.textContent=t(el.dataset.t));$('drawing').setAttribute('aria-label',t('drawingLabel'));$('home').setAttribute('aria-label',t('home'));$('certificate').setAttribute('aria-label',t('certTitle'));$('student-name').placeholder=t('namePlaceholder');$('student-name').setCustomValidity('');$('mode-name').textContent=modeTitle(mode);$('next').textContent=t(index===queue.length-1?'results':'next');setFeedback(feedbackState);renderResult();renderCertificate();}
 $('random').onclick=()=>start('random');$('ordered').onclick=()=>start('ordered');$('again').onclick=()=>home();function home(e){e?.preventDefault();active=null;completion=null;playerName='';queue=[];index=0;locked=false;$('student-name').readOnly=false;if(typeof resetSavedImage==='function')resetSavedImage();show('menu')}$('back').onclick=home;$('to-menu').onclick=home;$('home').onclick=home;show('menu');applyLanguage();
+
