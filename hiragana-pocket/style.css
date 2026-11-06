@@ -12,3 +12,16 @@ body:has(#certificate-view:not([hidden])) header{display:flex;justify-content:fl
 
 :root{--green:#7960a9;--ink:#39324e;--bg:#f8f5fb}#thai-reading{font-size:18px;color:#74618b;margin:6px 0 10px}.prompt h2{font-size:56px;margin-bottom:4px}#speak{border:1px solid #d2c3e5;background:#eee7f6;border-radius:20px;padding:10px 19px;color:#50366d;font:inherit;font-size:14px}#speech-status{font-size:12px;color:#74558b;line-height:1.6;margin:7px 0}.pronunciation-note{font-size:11px;color:#887692;line-height:1.9}.row-mode{background:#efe8f6;border-color:#dacde7}#feedback[data-state=success]{color:#583d7b;background:#eee5f8;border-color:#d3bce9}
 @media(max-width:600px){body:has(#game:not([hidden])) header{padding:14px 0}body:has(#game:not([hidden])) .portal-link{display:none}#game .prompt{margin:13px 0 10px}#game .prompt h2{font-size:48px}#game .paper{width:min(100%,32svh);max-width:340px}#game #hint-letter{font-size:min(60vw,26svh)}#game .game-meta{padding-top:13px}#game .player-line{margin-top:7px}#game .drawing-tools{margin:10px 0}}
+
+/* Klee One, basic hiragana subset. See Klee-One-OFL.txt. */
+@font-face {
+  font-family: "Klee One";
+  src: url("klee-one-hiragana.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+#hint-letter {
+  font-family: "Klee One", sans-serif;
+  font-weight: 400;
+}
