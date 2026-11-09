@@ -9,3 +9,13 @@ body:has(#certificate-view:not([hidden])) header{display:flex;justify-content:fl
 .row-section{margin-top:28px;padding-top:22px;border-top:1px solid #dce0d7}.row-section h2{font-size:19px;margin:0 0 8px}.row-section>p:not(.footnote){font-size:12px;line-height:1.8;color:#6e7871;margin:0 0 16px}#row-modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.row-mode{padding:17px 10px;text-align:left;border:1px solid #c9d8bf;border-radius:14px;background:#eaf0e4;color:var(--ink)}.row-mode strong{display:block;font-size:17px}.row-mode small{display:block;font-size:11px;color:#647a5d;margin-top:7px;letter-spacing:.05em}.row-mode:hover{background:#dce9d5}#certificate[data-division^="row-"] #cert-division{background:linear-gradient(90deg,#a4e3b1,#eeffce,#91d6b1);color:#254438}
 
 .portal-link{display:inline-block;color:#63766a;font-size:12px;text-decoration:none;margin-top:15px}body:has(#certificate-view:not([hidden])) .portal-link{display:none}
+
+#trace-modes {
+ display: grid;
+ grid-template-columns: repeat(2, minmax(0, 1fr));
+ gap: 10px;
+}
+#certificate[data-division^="trace-"] #cert-division {
+ background: linear-gradient(90deg, #bb9ce2, #f0e5ff, #c4a7e8);
+ color: #49345f;
+}

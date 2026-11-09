@@ -28,7 +28,7 @@ $('save-certificate').onclick=async()=>{
  resetSavedImage();const generation=saveGeneration;$('save-certificate').disabled=true;$('save-status').textContent=t('saving');
  try{if(document.fonts)await document.fonts.ready;if(generation!==saveGeneration)return;const image=certificateImage();const blob=await new Promise((resolve,reject)=>image.toBlob(b=>b?resolve(b):reject(Error('PNG export failed')),'image/png'));if(generation!==saveGeneration)return;
  certificateObjectURL=URL.createObjectURL(blob);$('saved-image').src=certificateObjectURL;$('saved-image').alt=t('certTitle')+' — '+$('cert-name').textContent;$('saved-image-panel').hidden=false;
- const a=document.createElement('a');a.href=certificateObjectURL;a.download=`hiragana-${rowFor(completion.mode)?completion.mode+'-20':completion.mode==='random'?'random-10':'ordered-46'}-${completion.date.toISOString().slice(0,10)}.png`;document.body.appendChild(a);a.click();a.remove();$('save-status').textContent=t('downloadReady');
+ const a=document.createElement('a');a.href=certificateObjectURL;a.download=`hiragana-${traceFor(completion.mode) ? completion.mode+'-'+questionCount(completion.mode) : rowFor(completion.mode)?completion.mode+'-20':completion.mode==='random'?'random-10':'ordered-46'}-${completion.date.toISOString().slice(0,10)}.png`;document.body.appendChild(a);a.click();a.remove();$('save-status').textContent=t('downloadReady');
  }catch(error){$('save-status').textContent=t('saveError')}finally{if(generation===saveGeneration)$('save-certificate').disabled=false}
 };
 
