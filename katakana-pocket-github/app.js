@@ -128,9 +128,38 @@ $('hint').onclick = () => {
 function raster(source){const n=64,c=document.createElement('canvas');c.width=c.height=n;const x=c.getContext('2d');x.drawImage(source,0,0,n,n);const d=x.getImageData(0,0,n,n).data;let minX=n,minY=n,maxX=0,maxY=0;for(let y=0;y<n;y++)for(let xx=0;xx<n;xx++)if(d[(y*n+xx)*4+3]>40){minX=Math.min(minX,xx);maxX=Math.max(maxX,xx);minY=Math.min(minY,y);maxY=Math.max(maxY,y)}const out=document.createElement('canvas');out.width=out.height=n;const ox=out.getContext('2d');const w=maxX-minX+1,h=maxY-minY+1;const scale=48/Math.max(w,h);ox.drawImage(c,minX,minY,w,h,(n-w*scale)/2,(n-h*scale)/2,w*scale,h*scale);const a=ox.getImageData(0,0,n,n).data;return Array.from({length:n*n},(_,i)=>a[i*4+3]>40)}
 function overlap(a,b){let hit=0,total=0;for(let i=0;i<a.length;i++){if(!a[i])continue;total++;const x=i%64,y=Math.floor(i/64);let found=false;for(let dy=-4;dy<=4&&!found;dy++)for(let dx=-4;dx<=4;dx++){const xx=x+dx,yy=y+dy;if(xx>=0&&xx<64&&yy>=0&&yy<64&&b[yy*64+xx]){found=true;break}}if(found)hit++}return total?hit/total:0}
 function score(){const glyph=document.createElement('canvas');glyph.width=glyph.height=600;const g=glyph.getContext('2d');g.font='440px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(kata(queue[index]),300,320);const a=raster(canvas),b=raster(glyph);return Math.min(overlap(a,b),overlap(b,a))}
-$('check').onclick=()=>{if(locked||active||strokes.flat().length<3)return;const points=strokes.flat();const spanX=Math.max(...points.map(p=>p[0]))-Math.min(...points.map(p=>p[0]));const spanY=Math.max(...points.map(p=>p[1]))-Math.min(...points.map(p=>p[1]));if(Math.max(spanX,spanY)<90||score()<.65){setFeedback(traceFor(mode) ? 'traceRetry' : 'close');return}locked=true;cleared.add(queue[index]);try{localStorage.setItem('katakana-pocket-cleared',JSON.stringify([...cleared]))}catch{}setHintVisible(false);$('hint').disabled=true;$('clear').disabled=true;$('check').hidden=true;$('next').hidden=false;$('next').textContent=t(index===queue.length-1?'results':'next');setFeedback('success');$('progress-fill').style.width=((index+1)/queue.length*100)+'%'};
+const PASS_SCORE = 0.65;
+const SCORE_TEXT = {
+ ja: { match: '一致度', pass: '合格ライン', size: 'マスにもう少し大きく書いてね' },
+ th: { match: 'ความใกล้เคียง', pass: 'เกณฑ์ผ่าน', size: 'ลองเขียนให้ใหญ่ขึ้นอีกนิด' },
+ en: { match: 'Shape match', pass: 'Passing score', size: 'Try writing a little larger' }
+};
+let feedbackScore = null;
+let feedbackTooSmall = false;
+$('check').onclick=()=>{if(locked||active||strokes.flat().length<3)return;const points=strokes.flat();const spanX=Math.max(...points.map(p=>p[0]))-Math.min(...points.map(p=>p[0]));const spanY=Math.max(...points.map(p=>p[1]))-Math.min(...points.map(p=>p[1]));const tooSmall = Math.max(spanX,spanY) < 90;
+ const match = tooSmall ? null : score();
+ if (tooSmall || match < PASS_SCORE) {
+  setFeedback(traceFor(mode) ? 'traceRetry' : 'close', match, tooSmall);
+  return;
+ }locked=true;cleared.add(queue[index]);try{localStorage.setItem('katakana-pocket-cleared',JSON.stringify([...cleared]))}catch{}setHintVisible(false);$('hint').disabled=true;$('clear').disabled=true;$('check').hidden=true;$('next').hidden=false;$('next').textContent=t(index===queue.length-1?'results':'next');setFeedback('success', match);$('progress-fill').style.width=((index+1)/queue.length*100)+'%'};
 $('next').onclick=()=>{if(!locked||active||index>=queue.length)return;index++;if(index<queue.length)load();else{completion=Object.freeze({name:playerName,mode,letters:[...queue],hints,date:new Date()});show('result');renderResult()}};
-function setFeedback(key){feedbackState=key;$('feedback').dataset.state=key;const c=queue[Math.min(index,queue.length-1)];$('feedback').textContent=t(key)+(key==='success'&&c?` ${c} → ${kata(c)}`:'')}
+function setFeedback(key, match = null, tooSmall = false) {
+ feedbackState = key;
+ feedbackScore = match;
+ feedbackTooSmall = tooSmall;
+ const feedback = $('feedback');
+ feedback.dataset.state = key;
+ const c = queue[Math.min(index, queue.length - 1)];
+ const labels = SCORE_TEXT[lang];
+ let message = t(key)+(key==='success'&&c?` ${c} → ${kata(c)}`:'');
+ if (tooSmall) {
+  message += ` · ${labels.size}`;
+ } else if (match !== null) {
+  message += ` · ${labels.match} ${Math.floor(match * 100)}%`;
+  if (key !== 'success') message += ` (${labels.pass} ${PASS_SCORE * 100}%)`;
+ }
+ feedback.textContent = message;
+}
 function renderResult(){if(!completion)return;$('result-text').textContent=t('resultSummary',{count:completion.letters.length,hints:completion.hints});$('result-letters').replaceChildren(...completion.letters.map(c=>{const s=document.createElement('span');s.textContent=c+' → '+kata(c);return s}));}
 function renderCertificate(){if(!completion)return;const random=completion.mode==='random';$('certificate').dataset.division=completion.mode;$('cert-division').textContent=divisionTitle(completion.mode);$('cert-name').textContent=completion.name;$('cert-count').textContent=`${completion.letters.length} / ${questionCount(completion.mode)}`;$('cert-hints').textContent=completion.hints;$('cert-date').textContent=new Intl.DateTimeFormat(({ja:'ja-JP',en:'en-GB',th:'th-TH'})[lang],{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'}).format(completion.date);$('cert-code').textContent=modeCode(completion.mode);}
 $('name-form').onsubmit=e=>{e.preventDefault();start('random')};
@@ -138,6 +167,6 @@ $('issue-certificate').onclick=()=>{if(!completion?.name)return;renderCertificat
 $('student-name').oninput=()=>$('student-name').setCustomValidity('');
 $('cert-home').onclick=()=>home();
 $('language').onchange=()=>{lang=$('language').value;try{localStorage.setItem('katakana-pocket-language',lang)}catch{}applyLanguage();};
-function applyLanguage(){document.documentElement.lang=lang;renderRows();renderTraceGroups();$('language').value=lang;document.title=t('appName');for(const [selector,key] of Object.entries(TEXT_TARGETS)){const el=document.querySelector(selector);if(el)el.textContent=t(key)}document.querySelectorAll('[data-t]').forEach(el=>el.textContent=t(el.dataset.t));setHintVisible(!$('hint-letter').hidden);$('drawing').setAttribute('aria-label',t('drawingLabel'));$('home').setAttribute('aria-label',t('home'));$('certificate').setAttribute('aria-label',t('certTitle'));$('student-name').placeholder=t('namePlaceholder');$('student-name').setCustomValidity('');$('mode-name').textContent=modeTitle(mode);$('next').textContent=t(index===queue.length-1?'results':'next');setFeedback(feedbackState);renderResult();renderCertificate();}
+function applyLanguage(){document.documentElement.lang=lang;renderRows();renderTraceGroups();$('language').value=lang;document.title=t('appName');for(const [selector,key] of Object.entries(TEXT_TARGETS)){const el=document.querySelector(selector);if(el)el.textContent=t(key)}document.querySelectorAll('[data-t]').forEach(el=>el.textContent=t(el.dataset.t));setHintVisible(!$('hint-letter').hidden);$('drawing').setAttribute('aria-label',t('drawingLabel'));$('home').setAttribute('aria-label',t('home'));$('certificate').setAttribute('aria-label',t('certTitle'));$('student-name').placeholder=t('namePlaceholder');$('student-name').setCustomValidity('');$('mode-name').textContent=modeTitle(mode);$('next').textContent=t(index===queue.length-1?'results':'next');setFeedback(feedbackState, feedbackScore, feedbackTooSmall);renderResult();renderCertificate();}
 $('random').onclick=()=>start('random');$('ordered').onclick=()=>start('ordered');$('again').onclick=()=>home();function home(e){e?.preventDefault();active=null;completion=null;playerName='';queue=[];index=0;locked=false;$('student-name').readOnly=false;if(typeof resetSavedImage==='function')resetSavedImage();show('menu')}$('back').onclick=home;$('to-menu').onclick=home;$('home').onclick=home;show('menu');applyLanguage();
 
