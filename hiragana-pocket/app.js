@@ -89,7 +89,7 @@ let completion=null,playerName='',feedbackState='initial';
 let queue=[],index=0,mode='random',strokes=[],active=null,locked=false,hints=0,usedHint=false,cleared=new Set();
 try{const saved=JSON.parse(localStorage.getItem('hiragana-pocket-cleared')||'[]');if(Array.isArray(saved))cleared=new Set(saved.filter(c=>HIRA.includes(c)))}catch{}
 const kata=c=>c;
-function show(id){['menu','game','result','certificate-view'].forEach(s=>$(s).hidden=s!==id);$('total').innerHTML=cleared.size+' <small>/ 46</small>'}
+function show(id){if(id!=='game')setHintVisible(false);['menu','game','result','certificate-view'].forEach(s=>$(s).hidden=s!==id);$('total').innerHTML=cleared.size+' <small>/ 46</small>'}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function start(m){const name=$('student-name').value.trim();if(!name){$('student-name').setCustomValidity(t('nameRequired'));$('student-name').reportValidity();$('student-name').focus();return;}$('student-name').setCustomValidity('');if(typeof resetSavedImage==='function')resetSavedImage();playerName=name;$('student-name').readOnly=true;$('player-name').textContent=playerName;completion=null;mode=m;
  const traceGroup = traceFor(m);
@@ -104,7 +104,12 @@ canvas.addEventListener('pointermove',e=>{if(active?.id!==e.pointerId)return;e.p
 function finish(e){if(active?.id!==e.pointerId)return;active=null;$('check').disabled=strokes.flat().length<3}
 canvas.addEventListener('pointerup',finish);canvas.addEventListener('pointercancel',finish);
 $('clear').onclick=()=>{if(locked)return;strokes=[];active=null;redraw();$('check').disabled=true;setFeedback('retry')};
+let hintTimer;
 function setHintVisible(visible) {
+ if (!visible) {
+  clearTimeout(hintTimer);
+  hintTimer = undefined;
+ }
  $('hint-letter').hidden = !visible;
  const button = $('hint');
  button.setAttribute('aria-pressed', String(visible));
@@ -113,6 +118,7 @@ function setHintVisible(visible) {
 $('hint').onclick = () => {
  const visible = $('hint-letter').hidden;
  setHintVisible(visible);
+ if (visible) hintTimer = setTimeout(() => setHintVisible(false), 3000);
  if (visible && !usedHint) {
   hints++;
   usedHint = true;
