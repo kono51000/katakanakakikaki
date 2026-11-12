@@ -4,7 +4,11 @@ function certificateImage(){
  const c=document.createElement('canvas');c.width=1000;c.height=1600;let g=c.getContext('2d');
  const font='-apple-system, BlinkMacSystemFont, "Noto Sans Thai", "Hiragino Kaku Gothic ProN", sans-serif';
  const lines=(text,size,width)=>{g.font=`${size}px ${font}`;const chars=typeof Intl.Segmenter==='function'?[...new Intl.Segmenter(lang,{granularity:'grapheme'}).segment(text)].map(s=>s.segment):Array.from(text);let out=[],line='';for(const ch of chars){if(g.measureText(line+ch).width>width&&line){out.push(line.trim());line=ch}else line+=ch}if(line)out.push(line.trim());return out};
- const title=lines(t('certTitle'),78,810),name=lines($('cert-name').textContent,66,790),body=lines(t('certBody'),32,780),division=lines($('cert-division').textContent,40,820),labels=[lines(t('clearedLabel'),25,360),lines(t('hintsLabel'),25,360)];
+ const title=lines(t('certTitle'),78,810),name=lines($('cert-name').textContent,66,790),body=lines(t('certBody'),32,780),division=lines($('cert-division').textContent,40,820),stats = [
+  { value: $('cert-count').textContent, label: t('clearedLabel'), x: 220 },
+  { value: $('cert-hints').textContent, label: t('hintsLabel'), x: 500 },
+  { value: $('cert-average').textContent, label: $('cert-average-label').textContent, x: 780 }
+ ], labels = stats.map(stat => lines(stat.label, 25, 245));
  const height=1250+title.length*95+name.length*90+body.length*56+division.length*60+Math.max(...labels.map(a=>a.length))*38;c.height=height;g=c.getContext('2d');
  let bg=g.createLinearGradient(0,0,1000,height);bg.addColorStop(0,'#56278b');bg.addColorStop(.5,'#34216f');bg.addColorStop(1,'#155f86');g.fillStyle=bg;g.fillRect(0,0,1000,height);
  g.strokeStyle='#f6ce73';g.lineWidth=12;g.strokeRect(20,20,960,height-40);g.strokeStyle='#f6ce7388';g.lineWidth=2;g.strokeRect(43,43,914,height-86);
@@ -16,7 +20,14 @@ function certificateImage(){
  const ribbon=g.createLinearGradient(80,0,920,0);ribbon.addColorStop(0,completion.mode==='random'?'#d49b3b':'#73c5d3');ribbon.addColorStop(.5,completion.mode==='random'?'#ffe8aa':'#ddffff');ribbon.addColorStop(1,completion.mode==='random'?'#e7b954':'#84d3de');g.fillStyle=ribbon;g.fillRect(65,y,870,division.length*60+34);y+=47;for(const line of division){text(line,y,40,'#352343',true);y+=60}y+=65;
  text(t('presented'),y,29,'#dbc9ee');y+=72;for(const line of name){text(line,y,66,'#ffffff',true);y+=90}g.strokeStyle='#f6ce7366';g.lineWidth=2;g.beginPath();g.moveTo(115,y-30);g.lineTo(885,y-30);g.stroke();y+=27;
  for(const line of body){text(line,y,32,'#eee1fa');y+=56}y+=66;
- for(let i=0;i<2;i++){g.fillStyle='#ffdf8a';g.font=`700 68px ${font}`;g.fillText(i?$('cert-hints').textContent:$('cert-count').textContent,i?715:285,y);g.font=`25px ${font}`;g.fillStyle='#e6d9f3';labels[i].forEach((line,j)=>g.fillText(line,i?715:285,y+65+j*38))}
+ stats.forEach(({ value, x }, i) => {
+  g.fillStyle = '#ffdf8a';
+  g.font = `700 58px ${font}`;
+  g.fillText(value, x, y);
+  g.font = `25px ${font}`;
+  g.fillStyle = '#e6d9f3';
+  labels[i].forEach((line, j) => g.fillText(line, x, y + 65 + j * 38));
+ });
  y+=120+Math.max(...labels.map(a=>a.length))*38;text(t('dateLabel'),y,25,'#ded1ed');y+=49;text($('cert-date').textContent,y,29);y+=84;g.strokeStyle='#ffffff44';g.beginPath();g.moveTo(100,y-25);g.lineTo(900,y-25);g.stroke();text($('cert-code').textContent+'   ·   WELL DONE',y+18,26,'#ffdf8a',true);
  return c;
 }
