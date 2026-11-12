@@ -93,7 +93,7 @@ function show(id){if(id!=='game')setHintVisible(false);['menu','game','result','
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function start(m){const name=$('student-name').value.trim();if(!name){$('student-name').setCustomValidity(t('nameRequired'));$('student-name').reportValidity();$('student-name').focus();return;}$('student-name').setCustomValidity('');if(typeof resetSavedImage==='function')resetSavedImage();playerName=name;$('student-name').readOnly=true;$('player-name').textContent=playerName;completion=null;mode=m;
  const traceGroup = traceFor(m);
- queue=traceGroup ? traceQueue(traceGroup) : rowFor(m)?rowQueue(rowFor(m)):m==='random'?shuffle([...HIRA]).slice(0,10):[...HIRA];index=0;hints=0;show('game');load();window.scrollTo({top:0,behavior:'instant'})}
+ queue=traceGroup ? traceQueue(traceGroup) : rowFor(m)?rowQueue(rowFor(m)):m==='random'?shuffle([...HIRA]).slice(0,10):[...HIRA];index=0;hints=0;totalAcceptedMatch=0;show('game');load();window.scrollTo({top:0,behavior:'instant'})}
 function load(){
  const tracing = Boolean(traceFor(mode));
  strokes=[];active=null;locked=false;usedHint=false;ctx.clearRect(0,0,600,600);$('question').textContent=reading(queue[index]).romaji;updatePronunciation();stopSpeech();$('hint-letter').textContent=kata(queue[index]);setHintVisible(false);$('hint').disabled=false;$('clear').disabled=false;$('check').hidden=false;$('check').disabled=true;$('next').hidden=true;$('counter').textContent=`${index+1} / ${queue.length}`;$('mode-name').textContent=modeTitle(mode);$('progress-fill').style.width=(index/queue.length*100)+'%';setFeedback(tracing ? 'traceInitial' : 'initial')}
@@ -172,10 +172,11 @@ function hasKaRightStroke(writtenStrokes, spanX, spanY) {
 }
 const PASS_SCORE = 0.65;
 const SCORE_TEXT = {
- ja: { missingPart: '離れた短い線や点も確認してね', match: '一致度', pass: '合格ライン', kaStroke: '「か」の右側の短い線も書いてね', size: 'マスにもう少し大きく書いてね' },
- th: { missingPart: 'ลองตรวจดูว่าขีดสั้นหรือจุดที่แยกกันเขียนครบไหม', match: 'ความใกล้เคียง', pass: 'เกณฑ์ผ่าน', kaStroke: 'อย่าลืมขีดสั้นด้านขวาของ か', size: 'ลองเขียนให้ใหญ่ขึ้นอีกนิด' },
- en: { missingPart: 'Check the separate strokes and dots', match: 'Shape match', pass: 'Passing score', kaStroke: 'Add the short stroke on the right of か', size: 'Try writing a little larger' }
+ ja: { average: '平均一致度', missingPart: '離れた短い線や点も確認してね', match: '一致度', pass: '合格ライン', kaStroke: '「か」の右側の短い線も書いてね', size: 'マスにもう少し大きく書いてね' },
+ th: { average: 'ความใกล้เคียงเฉลี่ย', missingPart: 'ลองตรวจดูว่าขีดสั้นหรือจุดที่แยกกันเขียนครบไหม', match: 'ความใกล้เคียง', pass: 'เกณฑ์ผ่าน', kaStroke: 'อย่าลืมขีดสั้นด้านขวาของ か', size: 'ลองเขียนให้ใหญ่ขึ้นอีกนิด' },
+ en: { average: 'Average shape match', missingPart: 'Check the separate strokes and dots', match: 'Shape match', pass: 'Passing score', kaStroke: 'Add the short stroke on the right of か', size: 'Try writing a little larger' }
 };
+let totalAcceptedMatch = 0;
 let feedbackScore = null;
 let feedbackTooSmall = false;
 let feedbackMissingPart = false;
@@ -193,8 +194,10 @@ $('check').onclick=async()=>{
  if (tooSmall || missingKaStroke || missingPart || match < PASS_SCORE) {
   setFeedback(traceFor(mode) ? 'traceRetry' : 'close', match, tooSmall, missingKaStroke, missingPart);
   return;
- }locked=true;cleared.add(queue[index]);try{localStorage.setItem('hiragana-pocket-cleared',JSON.stringify([...cleared]))}catch{}setHintVisible(false);$('hint').disabled=true;$('clear').disabled=true;$('check').hidden=true;$('next').hidden=false;$('next').textContent=t(index===queue.length-1?'results':'next');setFeedback('success', match);$('progress-fill').style.width=((index+1)/queue.length*100)+'%'};
-$('next').onclick=()=>{if(!locked||active||index>=queue.length)return;index++;if(index<queue.length)load();else{completion=Object.freeze({name:playerName,mode,letters:[...queue],hints,date:new Date()});show('result');renderResult()}};
+ }
+ totalAcceptedMatch += match;
+ locked=true;cleared.add(queue[index]);try{localStorage.setItem('hiragana-pocket-cleared',JSON.stringify([...cleared]))}catch{}setHintVisible(false);$('hint').disabled=true;$('clear').disabled=true;$('check').hidden=true;$('next').hidden=false;$('next').textContent=t(index===queue.length-1?'results':'next');setFeedback('success', match);$('progress-fill').style.width=((index+1)/queue.length*100)+'%'};
+$('next').onclick=()=>{if(!locked||active||index>=queue.length)return;index++;if(index<queue.length)load();else{completion=Object.freeze({name:playerName,mode,letters:[...queue],hints,averageMatch:totalAcceptedMatch/queue.length,date:new Date()});show('result');renderResult()}};
 function setFeedback(key, match = null, tooSmall = false, missingKaStroke = false, missingPart = false) {
  feedbackState = key;
  feedbackScore = match;
@@ -217,7 +220,10 @@ function setFeedback(key, match = null, tooSmall = false, missingKaStroke = fals
  feedback.textContent = message;
 }
 function renderResult(){if(!completion)return;$('result-text').textContent=t('resultSummary',{count:completion.letters.length,hints:completion.hints});$('result-letters').replaceChildren(...completion.letters.map(c=>{const s=document.createElement('span');s.textContent=reading(c).romaji+' → '+c;return s}));}
-function renderCertificate(){if(!completion)return;const random=completion.mode==='random';$('certificate').dataset.division=completion.mode;$('cert-division').textContent=divisionTitle(completion.mode);$('cert-name').textContent=completion.name;$('cert-count').textContent=`${completion.letters.length} / ${questionCount(completion.mode)}`;$('cert-hints').textContent=completion.hints;$('cert-date').textContent=new Intl.DateTimeFormat(({ja:'ja-JP',en:'en-GB',th:'th-TH'})[lang],{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'}).format(completion.date);$('cert-code').textContent=modeCode(completion.mode);}
+function renderCertificate(){if(!completion)return;const random=completion.mode==='random';$('certificate').dataset.division=completion.mode;$('cert-division').textContent=divisionTitle(completion.mode);$('cert-name').textContent=completion.name;$('cert-count').textContent=`${completion.letters.length} / ${questionCount(completion.mode)}`;$('cert-hints').textContent=completion.hints;
+ $('cert-average').textContent = new Intl.NumberFormat(lang, { style: 'percent', maximumFractionDigits: 1 }).format(completion.averageMatch);
+ $('cert-average-label').textContent = SCORE_TEXT[lang].average;
+ $('cert-date').textContent=new Intl.DateTimeFormat(({ja:'ja-JP',en:'en-GB',th:'th-TH'})[lang],{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'}).format(completion.date);$('cert-code').textContent=modeCode(completion.mode);}
 $('name-form').onsubmit=e=>{e.preventDefault();start('random')};
 $('issue-certificate').onclick=()=>{if(!completion?.name)return;renderCertificate();show('certificate-view');window.scrollTo({top:0,behavior:'instant'})};
 $('student-name').oninput=()=>$('student-name').setCustomValidity('');
