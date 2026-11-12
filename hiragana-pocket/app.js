@@ -118,7 +118,7 @@ function setHintVisible(visible) {
 $('hint').onclick = () => {
  const visible = $('hint-letter').hidden;
  setHintVisible(visible);
- if (visible) hintTimer = setTimeout(() => setHintVisible(false), 3000);
+ if (visible) hintTimer = setTimeout(() => setHintVisible(false), 5000);
  if (visible && !usedHint) {
   hints++;
   usedHint = true;
